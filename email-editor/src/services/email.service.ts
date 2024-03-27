@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { IEmail } from '../pages/types'
+import { IEmail } from '../pages/home/types'
 
 class EmailService {
 	private URL = 'http://localhost:3000/emails'
@@ -10,7 +10,9 @@ class EmailService {
 	}
 
 	async sendEmail(text: string) {
-		const data = await axios.post<IEmail>(this.URL, { text })
+		const { data } = await axios.post(this.URL, {
+			text,
+		})
 		return data
 	}
 }

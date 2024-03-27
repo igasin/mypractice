@@ -1,57 +1,39 @@
-import parse from 'html-react-parser'
 import { Bold, Eraser, Italic, Underline } from 'lucide-react'
-import { useRef, useState } from 'react'
 import styles from './EmailEditor.module.scss'
-import { TStyle, applyStyle } from './apply-style'
+
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import parse from 'html-react-parser'
+import { emailService } from '../../services/email.service'
+import { useEditor } from './useEditor'
 
 export function EmailEditor() {
-	const [text, setText] =
-		useState(`Hey! Lorem ipsum dolor sit amet consectetur adipisicing elit. Adipisci
-	deserunt praesentium suscipit eos minus, quidem, fugit excepturi cum
-	perspiciatis sed similique, ex delectus! Nihil eaque, maiores
-	doloremque error eum odio!`)
+	const { applyFormat, text, updateSelection, setText, textRef } = useEditor()
 
-	const [selectionStart, setSelectionStart] = useState(0)
-	const [selectionEnd, setSelectionEnd] = useState(0)
+	const queryClient = useQueryClient()
 
-	const textRef = useRef<HTMLTextAreaElement | null>(null)
-
-	const updateSelection = () => {
-		if (!textRef.current) return
-		setSelectionStart(textRef.current.selectionStart)
-		setSelectionEnd(textRef.current.selectionEnd)
-	}
-
-	const applyFormat = (type: TStyle) => {
-		const selectedText = text.substring(selectionStart, selectionEnd)
-
-		if (!selectedText) return
-
-		const before = text.substring(0, selectionStart)
-
-		const after = text.substring(selectionEnd)
-
-		setText(before + applyStyle(type, selectedText) + after)
-	}
+	const { mutate, isPending } = useMutation({
+		mutationKey: ['create email'],
+		mutationFn: () => emailService.sendEmail(text),
+		onSuccess() {
+			setText('')
+			queryClient.refetchQueries({ queryKey: ['email list'] })
+		},
+	})
 
 	return (
 		<div>
-			<h1>Email Editor</h1>
-			<div className={styles.preview}>{parse(text)}</div>
+			<h1>Email editor</h1>
+			{text && <div className={styles.preview}>{parse(text)}</div>}
 			<div className={styles.card}>
 				<textarea
 					ref={textRef}
-					contentEditable
 					className={styles.editor}
 					spellCheck='false'
 					onSelect={updateSelection}
 					value={text}
-					readOnly={false}
 					onChange={e => setText(e.target.value)}
-				>
-					{text}
-				</textarea>
-				<div className={styles.action}>
+				/>
+				<div className={styles.actions}>
 					<div className={styles.tools}>
 						<button onClick={() => setText('')}>
 							<Eraser size={17} />
@@ -66,7 +48,9 @@ export function EmailEditor() {
 							<Underline size={17} />
 						</button>
 					</div>
-					<button>Send now</button>
+					<button disabled={isPending} onClick={() => mutate()}>
+						Send now
+					</button>
 				</div>
 			</div>
 		</div>
